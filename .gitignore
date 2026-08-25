@@ -1,0 +1,18 @@
+﻿################################################################################
+# Este archivo .gitignore ha sido creado automáticamente por Microsoft(R) Visual Studio.
+################################################################################
+
+/OpenSpec.Application/bin/Debug/net8.0
+/.vs
+/OpenSpec.Application/obj
+/OpenSpec.Common/bin/Debug/net8.0
+/OpenSpec.Common/obj
+/OpenSpec.Domain/bin/Debug/net8.0
+/OpenSpec.Domain/obj/Debug/net8.0
+/OpenSpec.Domain/obj
+/OpenSpec.Infraestructure/bin/Debug/net8.0
+/OpenSpec.Infraestructure/obj
+/OpenSpec.Test/bin/Debug/net8.0
+/OpenSpec.Test/obj
+/OpenSpecTest/bin/Debug/net8.0
+/OpenSpecTest/obj

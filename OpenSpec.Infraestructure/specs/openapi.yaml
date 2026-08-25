@@ -1,0 +1,132 @@
+openapi: 3.0.3
+info:
+  title: DAM Anomaly Engine Management & Alerts API
+  version: 1.0.0
+  description: API para gestión de alertas de comportamiento anómalo, baselines e ingesta.
+paths:
+  /api/v1/alerts:
+    get:
+      summary: Obtener alertas de anomalías filtradas por score y estado
+      parameters:
+        - name: minScore
+          in: query
+          schema:
+            type: number
+            format: double
+            default: 50.0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [New, Reviewed, FalsePositive, Confirmed]
+      responses:
+        '200':
+          description: Lista de alertas consolidadas por sesión/usuario.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AlertRecordDto'
+
+  /api/v1/alerts/{id}/status:
+    patch:
+      summary: Actualizar estado de ciclo de vida de la alerta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [Reviewed, FalsePositive, Confirmed]
+                comment:
+                  type: string
+      responses:
+        '200':
+          description: Estado actualizado exitosamente.
+
+  /api/v1/baselines/{principalName}:
+    get:
+      summary: Obtener perfil de comportamiento baseline de un principal
+      parameters:
+        - name: principalName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Perfil estadístico y dimensiones del usuario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileBaselineDto'
+
+components:
+  schemas:
+    AlertRecordDto:
+      type: object
+      properties:
+        alertId:
+          type: string
+          format: uuid
+        sessionId:
+          type: integer
+        principalName:
+          type: string
+        clientHost:
+          type: string
+        compositeScore:
+          type: number
+          format: double
+        severity:
+          type: string
+          enum: [INFO, ALERT, CRIT]
+        status:
+          type: string
+        triggeredSignals:
+          type: array
+          items:
+            type: string
+        rawEventIds:
+          type: array
+          items:
+            type: string
+        eventCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    UserProfileBaselineDto:
+      type: object
+      properties:
+        principalName:
+          type: string
+        learningWindowEnd:
+          type: string
+          format: date-time
+        avgRowsPerQuery:
+          type: number
+          format: double
+        stdDevRowsPerQuery:
+          type: number
+          format: double
+        knownHosts:
+          type: array
+          items:
+            type: string
+        frequentTables:
+          type: array
+          items:
+            type: string

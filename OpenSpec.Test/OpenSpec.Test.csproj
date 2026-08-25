@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>library</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OpenSpec.Application\OpenSpec.Application.csproj" />
+    <ProjectReference Include="..\OpenSpec.Common\OpenSpec.Common.csproj" />
+    <ProjectReference Include="..\OpenSpec.Domain\OpenSpec.Domain.csproj" />
+  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+		<PackageReference Include="xunit" Version="2.7.0" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="2.5.7">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>all</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="FluentAssertions" Version="6.12.0" />
+		<PackageReference Include="Moq" Version="4.20.70" />
+	</ItemGroup>
+
+</Project>

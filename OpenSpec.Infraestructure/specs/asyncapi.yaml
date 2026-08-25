@@ -1,0 +1,44 @@
+asyncapi: 2.6.0
+info:
+  title: SQL Server Audit Event Stream Contract
+  version: 1.0.0
+  description: Especficiación del flujo de eventos de auditoría consumidos de forma incremental.
+channels:
+  sqlserver/audit/events:
+    subscribe:
+      summary: Consumo incremental de eventos de auditoría nativos de SQL Server
+      message:
+        $ref: '#/components/messages/AuditEventMessage'
+
+components:
+  messages:
+    AuditEventMessage:
+      payload:
+        type: object
+        properties:
+          eventId:
+            type: string
+          eventTime:
+            type: string
+            format: date-time
+          principalName:
+            type: string
+          clientHost:
+            type: string
+          applicationName:
+            type: string
+          actionType:
+            type: string
+          objectSchema:
+            type: string
+          objectName:
+            type: string
+          rowsAffected:
+            type: integer
+            format: int64
+          succeeded:
+            type: boolean
+          statementText:
+            type: string
+          sessionId:
+            type: integer
