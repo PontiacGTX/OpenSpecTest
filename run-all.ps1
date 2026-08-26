@@ -4,6 +4,9 @@
 #>
 
 $ErrorActionPreference = "Stop"
+$null = chcp 65001
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 $SolutionRoot = $PSScriptRoot
 $ApiPath      = Join-Path $SolutionRoot "OpenSpecTest"
@@ -35,6 +38,7 @@ if (-not $InitAuditSqlFile) {
 }
 
 $ContainerName = "anomaly_sqlserver"
+$ApiContainerName = "openspec_api"
 $SqlPassword =  "SecurePassword123!"
 $ApiUrl        = "http://localhost:5000"
 
@@ -43,7 +47,7 @@ Write-Host " [1/5] Levantando Infraestructura (Docker Compose) " -ForegroundColo
 Write-Host " Compose File: $DockerComposeFile" -ForegroundColor Gray
 Write-Host "====================================================" -ForegroundColor Cyan
 
-docker compose -f $DockerComposeFile up -d
+docker compose -f $DockerComposeFile up -d --build
 Write-Host "`n====================================================" -ForegroundColor Yellow
 Write-Host " [2/5] Esperando a que SQL Server esté disponible... " -ForegroundColor Yellow
 Write-Host "====================================================" -ForegroundColor Yellow
@@ -82,7 +86,7 @@ Write-Host " SQL File: $InitAuditSqlFile" -ForegroundColor Gray
 Write-Host "====================================================" -ForegroundColor Cyan
 
 docker cp $InitAuditSqlFile "${ContainerName}:/tmp/init-audit.sql"
-docker exec $ContainerName /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $SqlPassword -C -i /tmp/init-audit.sql
+docker exec $ContainerName /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $SqlPassword -C -b -i /tmp/init-audit.sql
 
 if ($LASTEXITCODE -ne 0) {
     throw "Error al ejecutar 'init-audit.sql' en el contenedor SQL."
@@ -91,10 +95,8 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "-> Auditoría configurada exitosamente." -ForegroundColor Green
 
 Write-Host "`n====================================================" -ForegroundColor Magenta
-Write-Host " [4/5] Compilando e Iniciando OpenSpec.API (.NET 8)  " -ForegroundColor Magenta
+Write-Host " [4/5] Esperando OpenSpec.API en Docker (.NET 8)     " -ForegroundColor Magenta
 Write-Host "====================================================" -ForegroundColor Magenta
-
-$apiProcess = Start-Process dotnet -ArgumentList "run --project `"$ApiPath/OpenSpec.API.csproj`" --property:NoWarn=NU1608" -PassThru -NoNewWindow
 
 Write-Host "Esperando inicio de la API en $ApiUrl..." -ForegroundColor Gray
 $apiReady = $false
@@ -104,7 +106,7 @@ while (-not $apiReady -and $apiRetries -lt 15) {
     $apiRetries++
     Start-Sleep -Seconds 3
     try {
-        $response = Invoke-WebRequest -Uri "$ApiUrl/swagger/index.html" -Method Get -TimeoutSec 2 -ErrorAction SilentlyContinue
+        $response = Invoke-WebRequest -Uri "$ApiUrl/swagger/index.html" -Method Get -TimeoutSec 2 -UseBasicParsing -ErrorAction SilentlyContinue
         if ($response.StatusCode -eq 200) {
             $apiReady = $true
             Write-Host "-> OpenSpec.API lista (Swagger accesible)." -ForegroundColor Green
@@ -112,23 +114,29 @@ while (-not $apiReady -and $apiRetries -lt 15) {
     } catch { }
 }
 
+if (-not $apiReady) {
+    throw "OpenSpec.API no respondió a tiempo. Revisa: docker logs openspec_api"
+}
+
 Write-Host "`n====================================================" -ForegroundColor Green
 Write-Host " [5/5] Ejecutando Escenarios de Tráfico Anómalo      " -ForegroundColor Green
 Write-Host "====================================================" -ForegroundColor Green
 
 try {
-    $triggerEndpoint = "$ApiUrl/api/v1/trafficgenerator/execute-all"
-    $response = Invoke-RestMethod -Uri $triggerEndpoint -Method Post -ErrorAction SilentlyContinue
-    $response | ConvertTo-Json -Depth 3 | Write-Host -ForegroundColor White
+    $triggerEndpoint = "$ApiUrl/api/test/traffic/run?scenario=FullSimulation&iterations=5"
+    Invoke-RestMethod -Uri $triggerEndpoint -Method Post -ErrorAction Stop | Out-Null
+
+    Write-Host "Escenarios iniciados. Esperando procesamiento de auditoría..." -ForegroundColor Gray
+    Start-Sleep -Seconds 15
+
+    Write-Host "`n-------------------- Salida del motor --------------------" -ForegroundColor White
+    docker logs --tail 300 $ApiContainerName 2>&1 |
+        Select-String -Pattern "Motor de monitoreo|procesando eventos|INFO \| baseline|ALERT|CRIT|Resumen batch|Usuarios analizados|Análisis Ollama|Harness de Generación" |
+        ForEach-Object { Write-Host $_.Line }
+    Write-Host "-----------------------------------------------------------" -ForegroundColor White
 }
 catch {
-    Write-Host "Ejecutando generador directamente por script si está disponible..." -ForegroundColor Yellow
-    $GeneratorScript = Join-Path $SolutionRoot "scripts\Invoke-DamTrafficGenerator.ps1"
-    if (Test-Path $GeneratorScript) {
-        & $GeneratorScript -Scenario All -Mode Direct -ConnectionString "Server=localhost,1433;Database=AnomalyTestDb;User Id=sa;Password=$SqlPassword;TrustServerCertificate=True;"
-    } else {
-        Write-Warning "Finalizado. Ejecuta las pruebas desde el Swagger UI."
-    }
+    throw "No se pudieron iniciar los escenarios mediante la API: $($_.Exception.Message)"
 }
 
 Write-Host "`nProceso completado." -ForegroundColor Cyan

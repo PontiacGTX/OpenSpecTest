@@ -12,6 +12,7 @@ USE AnomalyTestDb;
 GO
 
 -- 2. Esquema y Datos Sint�ticos con PII
+IF OBJECT_ID('dbo.customers', 'U') IS NULL
 CREATE TABLE dbo.customers (
     customer_id INT IDENTITY(1,1) PRIMARY KEY,
     full_name VARCHAR(100),
@@ -21,6 +22,7 @@ CREATE TABLE dbo.customers (
     created_at DATETIME DEFAULT GETDATE()
 );
 
+IF OBJECT_ID('dbo.transactions', 'U') IS NULL
 CREATE TABLE dbo.transactions (
     transaction_id INT IDENTITY(1,1) PRIMARY KEY,
     customer_id INT FOREIGN KEY REFERENCES dbo.customers(customer_id),
@@ -28,6 +30,7 @@ CREATE TABLE dbo.transactions (
     transaction_date DATETIME DEFAULT GETDATE()
 );
 
+IF OBJECT_ID('dbo.employees', 'U') IS NULL
 CREATE TABLE dbo.employees (
     employee_id INT IDENTITY(1,1) PRIMARY KEY,
     first_name VARCHAR(50),
@@ -64,36 +67,42 @@ INSERT INTO dbo.employees (first_name, last_name, salary)
 VALUES ('Carlos', 'Gomez', 4500.00), ('Ana', 'Lopez', 5200.00);
 
 -- 3. Crear Logins y Usuarios con Diferentes Privilegios
-CREATE LOGIN app_service WITH PASSWORD = 'AppPassword123!';
-CREATE USER app_service FOR LOGIN app_service;
-ALTER ROLE db_datareader ADD MEMBER app_service;
-ALTER ROLE db_datawriter ADD MEMBER app_service;
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'app_service')
+    CREATE LOGIN app_service WITH PASSWORD = 'AppPassword123!';
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'app_service')
+    CREATE USER app_service FOR LOGIN app_service;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm JOIN sys.database_principals r ON r.principal_id = rm.role_principal_id JOIN sys.database_principals m ON m.principal_id = rm.member_principal_id WHERE r.name = 'db_datareader' AND m.name = 'app_service') ALTER ROLE db_datareader ADD MEMBER app_service;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm JOIN sys.database_principals r ON r.principal_id = rm.role_principal_id JOIN sys.database_principals m ON m.principal_id = rm.member_principal_id WHERE r.name = 'db_datawriter' AND m.name = 'app_service') ALTER ROLE db_datawriter ADD MEMBER app_service;
 
-CREATE LOGIN read_only WITH PASSWORD = 'ReadOnlyPassword123!';
-CREATE USER read_only FOR LOGIN read_only;
-ALTER ROLE db_datareader ADD MEMBER read_only;
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'read_only')
+    CREATE LOGIN read_only WITH PASSWORD = 'ReadOnlyPassword123!';
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'read_only')
+    CREATE USER read_only FOR LOGIN read_only;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm JOIN sys.database_principals r ON r.principal_id = rm.role_principal_id JOIN sys.database_principals m ON m.principal_id = rm.member_principal_id WHERE r.name = 'db_datareader' AND m.name = 'read_only') ALTER ROLE db_datareader ADD MEMBER read_only;
 
-CREATE LOGIN analyst_user WITH PASSWORD = 'AnalystPassword123!';
-CREATE USER analyst_user FOR LOGIN analyst_user;
-ALTER ROLE db_datareader ADD MEMBER analyst_user;
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'analyst_user')
+    CREATE LOGIN analyst_user WITH PASSWORD = 'AnalystPassword123!';
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'analyst_user')
+    CREATE USER analyst_user FOR LOGIN analyst_user;
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm JOIN sys.database_principals r ON r.principal_id = rm.role_principal_id JOIN sys.database_principals m ON m.principal_id = rm.member_principal_id WHERE r.name = 'db_datareader' AND m.name = 'analyst_user') ALTER ROLE db_datareader ADD MEMBER analyst_user;
 
 -- Principales de prueba asociados a los 16 clientes para crear perfiles auditables.
-CREATE USER customer_user_01 WITHOUT LOGIN;
-CREATE USER customer_user_02 WITHOUT LOGIN;
-CREATE USER customer_user_03 WITHOUT LOGIN;
-CREATE USER customer_user_04 WITHOUT LOGIN;
-CREATE USER customer_user_05 WITHOUT LOGIN;
-CREATE USER customer_user_06 WITHOUT LOGIN;
-CREATE USER customer_user_07 WITHOUT LOGIN;
-CREATE USER customer_user_08 WITHOUT LOGIN;
-CREATE USER customer_user_09 WITHOUT LOGIN;
-CREATE USER customer_user_10 WITHOUT LOGIN;
-CREATE USER customer_user_11 WITHOUT LOGIN;
-CREATE USER customer_user_12 WITHOUT LOGIN;
-CREATE USER customer_user_13 WITHOUT LOGIN;
-CREATE USER customer_user_14 WITHOUT LOGIN;
-CREATE USER customer_user_15 WITHOUT LOGIN;
-CREATE USER customer_user_16 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_01') CREATE USER customer_user_01 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_02') CREATE USER customer_user_02 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_03') CREATE USER customer_user_03 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_04') CREATE USER customer_user_04 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_05') CREATE USER customer_user_05 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_06') CREATE USER customer_user_06 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_07') CREATE USER customer_user_07 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_08') CREATE USER customer_user_08 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_09') CREATE USER customer_user_09 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_10') CREATE USER customer_user_10 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_11') CREATE USER customer_user_11 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_12') CREATE USER customer_user_12 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_13') CREATE USER customer_user_13 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_14') CREATE USER customer_user_14 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_15') CREATE USER customer_user_15 WITHOUT LOGIN;
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'customer_user_16') CREATE USER customer_user_16 WITHOUT LOGIN;
 GO
 
 -- 4. Configurar Server Audit
