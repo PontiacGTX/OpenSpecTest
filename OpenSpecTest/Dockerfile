@@ -11,8 +11,7 @@ RUN dotnet restore OpenSpecTest/OpenSpec.API.csproj
 COPY . .
 RUN dotnet publish OpenSpecTest/OpenSpec.API.csproj \
     --configuration Release \
-    --output /app/publish \
-    --no-restore
+    --output /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
