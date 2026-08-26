@@ -94,7 +94,7 @@ Write-Host "`n====================================================" -ForegroundC
 Write-Host " [4/5] Compilando e Iniciando OpenSpec.API (.NET 8)  " -ForegroundColor Magenta
 Write-Host "====================================================" -ForegroundColor Magenta
 
-$apiProcess = Start-Process dotnet -ArgumentList "run --project `"$ApiPath/OpenSpec.API.csproj`"" -PassThru -NoNewWindow
+$apiProcess = Start-Process dotnet -ArgumentList "run --project `"$ApiPath/OpenSpec.API.csproj`" --property:NoWarn=NU1608" -PassThru -NoNewWindow
 
 Write-Host "Esperando inicio de la API en $ApiUrl..." -ForegroundColor Gray
 $apiReady = $false

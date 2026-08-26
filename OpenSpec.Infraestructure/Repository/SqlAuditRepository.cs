@@ -47,6 +47,7 @@ namespace OpenSpec.Infraestructure.Repository
             {
                 EventId = Guid.NewGuid().ToString(),
                 EventTime = e.EventTime,
+                Timestamp = e.EventTime,
                 PrincipalName = e.PrincipalName ?? "UNKNOWN",
                 ClientHost = string.IsNullOrWhiteSpace((string)e.ClientHost) ? "127.0.0.1" : (string)e.ClientHost,
                 ApplicationName = e.ApplicationName ?? "GenericClient",
@@ -58,6 +59,20 @@ namespace OpenSpec.Infraestructure.Repository
                 StatementText = e.StatementText ?? string.Empty,
                 SessionId = e.SessionId ?? 0
             });
+        }
+
+        public async Task<IEnumerable<string>> FetchDatabasePrincipalsAsync()
+        {
+            using var connection = new SqlConnection(_connectionString);
+
+            const string sql = @"
+                SELECT name
+                FROM sys.database_principals
+                WHERE type IN ('S', 'E', 'X')
+                  AND name NOT IN ('dbo', 'guest', 'INFORMATION_SCHEMA', 'sys')
+                ORDER BY name;";
+
+            return await connection.QueryAsync<string>(sql);
         }
 
         private static string NormalizeAction(string actionId, string statement)
