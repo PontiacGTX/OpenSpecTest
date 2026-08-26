@@ -1,25 +1,39 @@
 ﻿using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using OpenSpec.Domain.Models;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace OpenSpec.Application.Services
 {
     public class HybridDetectionEngine
     {
         private readonly IChatCompletionService? _chatService;
+        private readonly string _ollamaModel;
+        private readonly string _ollamaEndpoint;
 
-        public HybridDetectionEngine(string? ollamaEndpoint = "http://host.docker.internal:11434/v1")
+        public HybridDetectionEngine(
+            string? ollamaEndpoint = "http://localhost:11434/v1",
+            string ollamaModel = "llama3.2:3b")
         {
+            _ollamaModel = ollamaModel;
+            _ollamaEndpoint = ollamaEndpoint ?? string.Empty;
+
+            Log.Information("Ollama configurado | endpoint={Endpoint} | modelo={Model}", _ollamaEndpoint, _ollamaModel);
+
             if (!string.IsNullOrEmpty(ollamaEndpoint))
             {
                 // Construir Semantic Kernel apuntando al endpoint OpenAI-compatible de Ollama
                 var builder = Kernel.CreateBuilder();
-                builder.AddOpenAIChatCompletion("llama3.2:3b", apiKey: "*", httpClient: new HttpClient { BaseAddress = new Uri(ollamaEndpoint) });
+                builder.AddOpenAIChatCompletion(_ollamaModel, apiKey: "ollama", httpClient: new HttpClient
+                {
+                    BaseAddress = new Uri(ollamaEndpoint)
+                });
                 var kernel = builder.Build();
                 _chatService = kernel.GetRequiredService<IChatCompletionService>();
             }
@@ -81,6 +95,10 @@ namespace OpenSpec.Application.Services
                     totalScore += semanticScore * 20.0;
                 }
             }
+            else if (suspiciousQueries.Any())
+            {
+                Log.Warning("Análisis Ollama no disponible | consultas pendientes: {QueryCount}", suspiciousQueries.Count);
+            }
 
             // Ajustar Severidad
             if (totalScore >= 90.0) highestSeverity = SeverityLevel.CRIT;
@@ -98,14 +116,29 @@ namespace OpenSpec.Application.Services
                 history.AddUserMessage($"Queries a evaluar:\n{string.Join("\n", sqlStatements)}");
 
                 var response = await _chatService!.GetChatMessageContentAsync(history);
-                if (double.TryParse(response.Content?.Trim(), System.Globalization.CultureInfo.InvariantCulture, out double result))
+                var content = response.Content?.Trim() ?? string.Empty;
+                if (double.TryParse(content, System.Globalization.CultureInfo.InvariantCulture, out double result))
                 {
+                    result = Math.Clamp(result, 0.0, 1.0);
+                    Log.Information("Análisis Ollama completado | modelo={Model} | consultas={QueryCount} | confianza={Confidence:F2}",
+                        _ollamaModel, sqlStatements.Count, result);
                     return result;
                 }
+
+                var numericMatch = Regex.Match(content, @"(?<![\d.])(?:0(?:\.\d+)?|1(?:\.0+)?)(?![\d.])");
+                if (numericMatch.Success && double.TryParse(numericMatch.Value, System.Globalization.CultureInfo.InvariantCulture, out result))
+                {
+                    Log.Information("Análisis Ollama completado | modelo={Model} | consultas={QueryCount} | confianza={Confidence:F2}",
+                        _ollamaModel, sqlStatements.Count, result);
+                    return result;
+                }
+
+                Log.Warning("Ollama respondió un valor no numérico | modelo={Model} | respuesta={Response}",
+                    _ollamaModel, content);
             }
-            catch
+            catch (Exception ex)
             {
-                // Fallback silencioso si Ollama no responde
+                Log.Warning(ex, "No se pudo consultar Ollama | endpoint={Endpoint} | modelo={Model}", _ollamaEndpoint, _ollamaModel);
             }
             return 0.0;
         }

@@ -26,5 +26,24 @@ services:
       echo 'Base de datos y auditoría inicializadas correctamente.';
       wait"
 
+  api:
+    build:
+      context: ..
+      dockerfile: OpenSpecTest/Dockerfile
+    container_name: openspec_api
+    restart: unless-stopped
+    depends_on:
+      - sqlserver
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__SqlAudit: Server=sqlserver,1433;Database=AnomalyTestDb;User Id=sa;Password=SecurePassword123!;TrustServerCertificate=True;
+      Ollama__Endpoint: http://host.docker.internal:11434/v1
+      Ollama__Model: llama3.2:3b
+    ports:
+      - "5000:8080"
+    volumes:
+      - sql_audit_data:/var/opt/mssql/audit:ro
+
 volumes:
   sql_audit_data:
